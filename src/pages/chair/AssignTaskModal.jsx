@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useRoles } from '../../contexts/RolesContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Remove hardcoded ROLE_OPTIONS - now using context
 // const ROLE_OPTIONS = [...]; ← DELETED
@@ -421,6 +422,12 @@ const AssignTaskModal = ({ open, onClose, onTaskAssigned }) => {
 
 export default function ChairPersonAssignTaskFeature() {
   const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+
+  // Only show button if user is Chair Person
+  if (user?.role !== 'Chair Person') {
+    return null;
+  }
 
   return (
     <div>

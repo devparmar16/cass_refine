@@ -11,10 +11,10 @@ export default function FormUploadModal({
   const [formData, setFormData] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  const handleChange = (e) => {
+  const handleChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [field.label]: value  // Use label as key for better display
     }));
   };
 
@@ -72,19 +72,17 @@ export default function FormUploadModal({
                 </label>
                 {field.type === 'textarea' ? (
                   <textarea
-                    name={field.id}
                     placeholder={field.label}
                     className="border p-2 w-full rounded"
-                    onChange={handleChange}
+                    onChange={(e) => handleChange(field, e.target.value)}
                     required={field.required}
                   />
                 ) : (
                   <input
                     type={field.type || 'text'}
-                    name={field.id}
                     placeholder={field.label}
                     className="border p-2 w-full rounded"
-                    onChange={handleChange}
+                    onChange={(e) => handleChange(field, e.target.value)}
                     required={field.required}
                   />
                 )}

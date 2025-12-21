@@ -55,7 +55,7 @@ export default function FormWithFileModal({ task, schema, onCancel, onSubmit }) 
                 className="w-full border rounded p-2"
                 placeholder={field.label}
                 onChange={e =>
-                  setFormData(prev => ({ ...prev, [field.id]: e.target.value }))
+                  setFormData(prev => ({ ...prev, [field.label]: e.target.value }))
                 }
               />
             ) : (
@@ -64,7 +64,7 @@ export default function FormWithFileModal({ task, schema, onCancel, onSubmit }) 
                 className="w-full border rounded p-2"
                 placeholder={field.label}
                 onChange={e =>
-                  setFormData(prev => ({ ...prev, [field.id]: e.target.value }))
+                  setFormData(prev => ({ ...prev, [field.label]: e.target.value }))
                 }
               />
             )}

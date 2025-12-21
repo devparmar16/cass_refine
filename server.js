@@ -45,6 +45,33 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'Server is working!' });
 });
 
+// Helper function to get sender email (chair email) using roleEmailResolver
+async function getSenderEmail() {
+  try {
+    // Try to get chair email using common chair role labels
+    const chairRoleVariations = ['Chair Person', 'chair', 'Chairperson', 'Chair'];
+    
+    for (const roleLabel of chairRoleVariations) {
+      try {
+        const chairEmail = await getEmailByRole(roleLabel, supabase);
+        if (chairEmail) {
+          console.log(`✅ Found chair email for role "${roleLabel}": ${chairEmail}`);
+          return chairEmail;
+        }
+      } catch (err) {
+        // Try next variation
+        console.log(`⚠️ Chair role "${roleLabel}" not found, trying next...`);
+      }
+    }
+    
+    console.log('⚠️ No chair email found for any variation, falling back to env EMAIL_USER');
+    return process.env.EMAIL_USER;
+  } catch (err) {
+    console.error('❌ Error getting sender email:', err);
+    return process.env.EMAIL_USER;
+  }
+}
+
 // Helper function to format date/time
 function formatDateTime(date = new Date()) {
   return date.toLocaleString('en-US', {
@@ -85,22 +112,17 @@ app.post('/api/email/task-rejected', async (req, res) => {
     // Get recipient email - either provided or resolve from role label
     let toEmail = recipientEmail;
     if (!toEmail) {
-      console.log(`📧 Looking up recipient email for role: "${assignedToLabel}"`);
       toEmail = await getEmailByRole(assignedToLabel, supabase);
-      console.log(`✅ Recipient resolved: ${toEmail}`);
     }
     
     if (!toEmail) {
-      console.error('❌ Could not find email for role label:', assignedToLabel);
+      console.error('Could not find email for role label:', assignedToLabel);
       return res.status(404).json({ error: 'Recipient email not found for the assigned role' });
     }
 
     // Use EMAIL_USER as sender (Gmail SMTP requires sending from authenticated account)
     const senderEmail = process.env.EMAIL_USER;
-    console.log('\n📨 REJECTION EMAIL');
-    console.log(`   FROM (sender): ${senderEmail} [EMAIL_USER from .env]`);
-    console.log(`   TO (recipient): ${toEmail} [${assignedToLabel} from database]`);
-    console.log(`   TASK: ${taskName}\n`);
+    console.log('Sending rejection email from:', senderEmail, 'to:', toEmail);
 
     const currentDateTime = formatDateTime();
     const reason = rejectionReason || 'No specific reason provided';
@@ -227,22 +249,17 @@ app.post('/api/email/task-accepted', async (req, res) => {
     // Get recipient email - either provided or resolve from role label
     let toEmail = recipientEmail;
     if (!toEmail) {
-      console.log(`📧 Looking up recipient email for role: "${assignedToLabel}"`);
       toEmail = await getEmailByRole(assignedToLabel, supabase);
-      console.log(`✅ Recipient resolved: ${toEmail}`);
     }
     
     if (!toEmail) {
-      console.error('❌ Could not find email for role label:', assignedToLabel);
+      console.error('Could not find email for role label:', assignedToLabel);
       return res.status(404).json({ error: 'Recipient email not found for the assigned role' });
     }
 
     // Use EMAIL_USER as sender (Gmail SMTP requires sending from authenticated account)
     const senderEmail = process.env.EMAIL_USER;
-    console.log('\n📨 ACCEPTANCE EMAIL');
-    console.log(`   FROM (sender): ${senderEmail} [EMAIL_USER from .env]`);
-    console.log(`   TO (recipient): ${toEmail} [${assignedToLabel} from database]`);
-    console.log(`   TASK: ${taskName}\n`);
+    console.log('Sending acceptance email from:', senderEmail, 'to:', toEmail);
 
     const currentDateTime = formatDateTime();
 

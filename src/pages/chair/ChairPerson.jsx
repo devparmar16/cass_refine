@@ -45,7 +45,7 @@ const ChairEventsList = ({ onSelectEvent }) => {
 };
 
 // --- Event View Component with Task Fetching ---
-const EventView = ({ event, onBack, userRole }) => {
+const EventView = ({ event, onBack, userRole, user }) => {
   const [tab, setTab] = useState('mytasks');
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -106,12 +106,14 @@ const EventView = ({ event, onBack, userRole }) => {
         <button onClick={onBack} className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">
           Back to Events
         </button>
-        <button
-          onClick={() => setAssignModalOpen(true)}
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-        >
-          Assign Task
-        </button>
+        {user?.role === 'Chair Person' && (
+          <button
+            onClick={() => setAssignModalOpen(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+          >
+            Assign Task
+          </button>
+        )}
       </div>
       <h3 className="text-lg font-bold mb-4">Event: {event.event_name}</h3>
 
@@ -177,6 +179,7 @@ const ChairPerson = () => {
           event={selectedEvent}
           onBack={() => setSelectedEvent(null)}
           userRole={currentUserRole}
+          user={user}
         />
       )}
     </div>

@@ -227,7 +227,7 @@ export default function EventTasks() {
         <Button variant="outline" onClick={() => navigate('/events')}>Back to Events</Button>
         
         {/* Chair-only: Assign Task button */}
-        {/* {userRole === 'Chair Person' && (
+        {/* {user?.role === 'Chair Person' && (
           <Button onClick={() => setShowAssignModal(true)}>
             Assign Task
           </Button>
