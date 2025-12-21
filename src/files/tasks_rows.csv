@@ -1,0 +1,14 @@
+task_name,task_id,roles,data_format,review_role
+Expert Feedback Report,t_ef,Vice Chairperson,pdf,"[""Chair Person""]"
+Event Invitations,t_ei,Secretary,pdf,"[""Chair Person""]"
+Event Proposal Document,t_ep,Secretary,pdf,"[""Vice Chairperson,Chair Person""]"
+Email Communication Records,t_er,Chair Person,pdf,
+Final Budget Report,t_fb,Treasurer,pdf,"[""Vice Chairperson,Chair Person""]"
+Guest Speaker Profile,t_gp,Vice Chairperson,form,"[""Chair Person""]"
+IEEE Mega Event Report,t_mr,Secretary,pdf,"[""Chair Person""]"
+Official Approval Letters/Documents,t_oa,Chair Person,pdf,
+Participant Feedback Forms,t_pf,Vice Chairperson,template,"[""Chair Person""]"
+Pre-event Meeting Minutes,t_pp,Secretary,pdf,"[""Vice Chairperson,Chair Person""]"
+Participant Registration Data,t_pr,Vice Chairperson,template,"[""Chair Person""]"
+Registration Desk Team Details,t_rd,Vice Chairperson,table,"[""Chair Person""]"
+Tentative Budget Plan,t_tb,Treasurer,pdf,"[""Vice Chairperson,Chair Person""]"

@@ -1,0 +1,2 @@
+import{f as a}from"./chunk-U2G75A5D.js";import{a as m}from"./chunk-MZMIW4QZ.js";import{a as l}from"./chunk-6FFWA7XS.js";import{d as e}from"./chunk-TEDR2MDT.js";var i=e(l(),1);var o=e(m(),1),n=Object.freeze({position:"absolute",border:0,width:1,height:1,padding:0,margin:-1,overflow:"hidden",clip:"rect(0, 0, 0, 0)",whiteSpace:"nowrap",wordWrap:"normal"}),p="VisuallyHidden",t=i.forwardRef((r,d)=>(0,o.jsx)(a.span,{...r,ref:d,style:{...n,...r.style}}));t.displayName=p;var f=t;export{n as a,f as b};
+//# sourceMappingURL=chunk-WIKQRCCQ.js.map

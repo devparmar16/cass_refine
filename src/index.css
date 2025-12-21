@@ -1,0 +1,214 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 214 100% 50%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 214 100% 50%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Mobile-specific improvements */
+@layer utilities {
+  /* Better touch targets for mobile */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improved text readability on mobile */
+  .mobile-text {
+    @apply text-sm leading-relaxed;
+  }
+  
+  /* Mobile-optimized spacing */
+  .mobile-spacing {
+    @apply space-y-3 sm:space-y-4;
+  }
+  
+  /* Mobile-friendly card padding */
+  .mobile-card {
+    @apply p-3 sm:p-4 lg:p-6;
+  }
+  
+  /* Mobile-optimized button sizing */
+  .mobile-button {
+    @apply h-10 sm:h-12 text-xs sm:text-sm;
+  }
+  
+  /* Mobile-friendly grid layouts */
+  .mobile-grid {
+    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+  
+  /* Mobile-optimized text truncation */
+  .mobile-truncate {
+    @apply truncate text-xs sm:text-sm;
+  }
+  
+  /* Mobile-friendly flex layouts */
+  .mobile-flex {
+    @apply flex-col sm:flex-row;
+  }
+  
+  /* Mobile-optimized gaps */
+  .mobile-gap {
+    @apply gap-2 sm:gap-3 lg:gap-4;
+  }
+  
+  /* Mobile-friendly margins */
+  .mobile-margin {
+    @apply mb-3 sm:mb-4 lg:mb-6;
+  }
+  
+  /* Mobile-optimized padding */
+  .mobile-padding {
+    @apply p-2 sm:p-3 lg:p-4;
+  }
+  
+  /* Mobile-friendly icon sizing */
+  .mobile-icon {
+    @apply h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6;
+  }
+  
+  /* Mobile-optimized badge sizing */
+  .mobile-badge {
+    @apply text-xs sm:text-sm px-2 sm:px-3 py-1;
+  }
+  
+  /* Mobile-friendly button groups */
+  .mobile-button-group {
+    @apply flex flex-col sm:flex-row gap-2 sm:gap-3;
+  }
+  
+  /* Mobile-optimized navigation */
+  .mobile-nav {
+    @apply grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3;
+  }
+  
+  /* Mobile-friendly stats grid */
+  .mobile-stats {
+    @apply grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4;
+  }
+  
+  /* Mobile-optimized content areas */
+  .mobile-content {
+    @apply px-2 sm:px-4 py-3 sm:py-4 lg:py-6;
+  }
+  
+  /* Mobile-friendly header sizing */
+  .mobile-header {
+    @apply text-xl sm:text-2xl lg:text-3xl font-bold;
+  }
+  
+  /* Mobile-optimized subheader */
+  .mobile-subheader {
+    @apply text-base sm:text-lg lg:text-xl font-semibold;
+  }
+  
+  /* Mobile-friendly body text */
+  .mobile-body {
+    @apply text-sm sm:text-base;
+  }
+  
+  /* Mobile-optimized caption text */
+  .mobile-caption {
+    @apply text-xs sm:text-sm;
+  }
+}
