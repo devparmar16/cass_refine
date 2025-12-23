@@ -20,6 +20,7 @@ import { TasksProvider, useTasks } from '@/contexts/TasksContext';
 import EnhancedEventHeader from '@/components/EnhancedEventHeader';
 import { useTableChangeTrigger } from '@/hooks/useTableChangeTrigger';
 import { sendTaskRejectedEmail, sendTaskAcceptedEmail, extractRejectionReason } from '@/lib/emailNotify';
+import DashboardStats from '@/components/dashboard/DashboardStats';
 
 // Component to display a single task row for Technical Coordinator
 const TaskRow = ({ task, status, onUploadClick, onApproveClick, onRejectClick, isReview, locked, user, currentReviewer }) => {
@@ -1006,8 +1007,7 @@ const TechnicalCoordinator = ({ eventId, section: initialSection = 'mytasks' }) 
 
     useEffect(() => {
       if (!user) return;
-      setLoadingDashboard(true);
-      const fetchStats = async () => {
+      const fetchUpcomingEvents = async () => {
         // Fetch all events (future or today)
         const { data: events, error: eventsError } = await supabase
           .from('events')
@@ -1037,44 +1037,9 @@ const TechnicalCoordinator = ({ eventId, section: initialSection = 'mytasks' }) 
               };
             })
         );
-        // Fetch all assigned tasks for technical coordinator
-        const { data: assignedTasks, error: assignedError } = await supabase
-          .from('technical_coordinator_main')
-          .select('id, status');
-        setDashboardStats([
-          {
-            title: 'Events',
-            value: upcoming.length,
-            icon: Calendar,
-            color: 'text-blue-600',
-            clickHandler: () => navigate('/events'),
-          },
-          {
-            title: 'Assigned Tasks',
-            value: assignedTasks?.length || 0,
-            icon: FileText,
-            color: 'text-green-600',
-            clickHandler: () => navigate('/events'),
-          },
-          {
-            title: 'Pending Tasks',
-            value: assignedTasks?.filter((t) => t.status === 'pending').length || 0,
-            icon: Clock,
-            color: 'text-orange-600',
-            clickHandler: () => navigate('/events'),
-          },
-          {
-            title: 'Completed',
-            value: assignedTasks?.filter((t) => t.status === 'approved').length || 0,
-            icon: CheckCircle,
-            color: 'text-purple-600',
-            clickHandler: () => navigate('/events'),
-          },
-        ]);
         setRecentActivities([]); // You can add logic to fetch recent activities if needed
-        setLoadingDashboard(false);
       };
-      fetchStats();
+      fetchUpcomingEvents();
     }, [user, navigate]);
 
     return (
@@ -1086,28 +1051,8 @@ const TechnicalCoordinator = ({ eventId, section: initialSection = 'mytasks' }) 
             Here's what's happening with your club activities today.
           </p>
         </div>
-        {/* Analytics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {dashboardStats?.map((stat, index) => (
-            <Card 
-              key={index} 
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={stat.clickHandler}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                  </div>
-                  <div className={`p-3 rounded-full bg-gray-100 ${stat.color}`}>
-                    <stat.icon className="h-6 w-6" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {/* Analytics Cards - Using DashboardStats Component */}
+        <DashboardStats role="Technical Coordinator" />
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Activities */}
@@ -1159,40 +1104,6 @@ const TechnicalCoordinator = ({ eventId, section: initialSection = 'mytasks' }) 
                   <Badge variant={event.soonLabel === 'Today' ? 'destructive' : 'outline'}>{event.soonLabel}</Badge>
                 </div>
               ))}
-            </div>
-          </CardContent>
-        </Card>
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col gap-2"
-                onClick={() => navigate('/events')}
-              >
-                <FileText className="h-6 w-6" />
-                View Events
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col gap-2"
-                onClick={() => navigate('/events')}
-              >
-                <Users className="h-6 w-6" />
-                Event Tasks
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col gap-2"
-                onClick={() => navigate('/events')}
-              >
-                <TrendingUp className="h-6 w-6" />
-                Event Overview
-              </Button>
             </div>
           </CardContent>
         </Card>

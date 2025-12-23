@@ -19,6 +19,7 @@ import { getSenderRoleFromTable } from '@/lib/utils';
 import AllEventsList from '@/components/AllEventsList';
 import EnhancedEventHeader from '@/components/EnhancedEventHeader';
 import { useTableChangeTrigger } from '@/hooks/useTableChangeTrigger';
+import DashboardStats from '@/components/dashboard/DashboardStats';
 
 // Component to display a single task row for Event Coordinator
 const TaskRow = ({ task, status, onUploadClick, onApproveClick, isReview, locked }) => {
@@ -170,11 +171,8 @@ const EventCoordinator = ({ eventId: propEventId }) => {
   const [uploadError, setUploadError] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [viewMode, setViewMode] = useState('my');
-  const [dashboardStats, setDashboardStats] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
-  const [loadingDashboard, setLoadingDashboard] = useState(true);
-  const [stats, setStats] = useState([]);
   const normalizedRole = user?.role?.toLowerCase().replace(/\s+/g, '_');
   // Add state for rejected tasks
   const [rejectedTasks, setRejectedTasks] = useState([]);
@@ -827,11 +825,10 @@ const EventCoordinator = ({ eventId: propEventId }) => {
     </div>
   );
 
-  // If no eventId, render dashboard view (full Chair/Vice Chair dashboard logic)
+  // If no eventId, render dashboard view (simplified - only fetch upcoming events)
   useEffect(() => {
     if (!user) return;
-    setLoadingDashboard(true);
-    const fetchStats = async () => {
+    const fetchUpcomingEvents = async () => {
       if (normalizedRole === 'event_coordinator') {
         // Fetch all events (same as Chair/Vice Chair logic)
         const { data: events, error: eventsError } = await supabase
@@ -856,58 +853,10 @@ const EventCoordinator = ({ eventId: propEventId }) => {
               };
             })
         );
-        setStats([
-          {
-            title: 'Assigned Tasks',
-            value: events?.length || 0,
-            icon: FileText,
-            color: 'text-blue-600',
-            clickHandler: () => navigate('/events'),
-          },
-          {
-            title: 'Pending Reviews',
-            value: events?.filter((t) => t.status === 'pending').length || 0,
-            icon: Clock,
-            color: 'text-orange-600',
-            clickHandler: () => navigate('/events'),
-          },
-          {
-            title: 'Completed',
-            value: events?.filter((t) => t.status === 'approved').length || 0,
-            icon: CheckCircle,
-            color: 'text-green-600',
-            clickHandler: () => navigate('/events'),
-          },
-          {
-            title: 'This Month',
-            value: events?.filter((t) => {
-              const d = new Date(t.uploaded_at);
-              const now = new Date();
-              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-            }).length || 0,
-            icon: Calendar,
-            color: 'text-purple-600',
-            clickHandler: () => navigate('/events'),
-          },
-        ]);
-        // Recent activities: last 5 uploads
-        setRecentActivities(
-          (events || [])
-            .filter((t) => t.uploaded_at) // Only include items with an upload timestamp
-            .sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at))
-            .slice(0, 5)
-            .map((t) => ({
-              id: t.id,
-              action: t.event_name,
-              time: new Date(t.uploaded_at).toLocaleString(),
-              type: t.status === 'approved' ? 'success' : 'info',
-              start_date: t.start_date,
-            }))
-        );
+        setRecentActivities([]); // Can be populated later if needed
       }
-      setLoadingDashboard(false);
     };
-    if (!params.eventId && !eventId) fetchStats();
+    if (!params.eventId && !eventId) fetchUpcomingEvents();
   }, [user, navigate, params.eventId, eventId, normalizedRole]);
 
   // Function to navigate to event tasks
@@ -925,28 +874,8 @@ const EventCoordinator = ({ eventId: propEventId }) => {
             Here's what's happening with your club activities today.
           </p>
         </div>
-        {/* Analytics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {stats.map((stat, index) => (
-            <Card 
-              key={index} 
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={stat.clickHandler}
-            >
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className="text-xl sm:text-2xl font-bold text-gray-900">{stat.value}</p>
-                  </div>
-                  <div className={`p-2 sm:p-3 rounded-full bg-gray-100 ${stat.color}`}>
-                    <stat.icon className="h-5 w-5 sm:h-6 sm:w-6" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {/* Analytics Cards - Using DashboardStats Component */}
+        <DashboardStats role="Event Coordinator" />
         {/* All Events List */}
         <AllEventsList 
           roleType="event_coord"
@@ -973,43 +902,6 @@ const EventCoordinator = ({ eventId: propEventId }) => {
                   <Badge variant={event.soonLabel === 'Today' ? 'destructive' : 'outline'} className="text-xs">{event.soonLabel}</Badge>
                 </div>
               ))}
-            </div>
-          </CardContent>
-        </Card>
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <Button 
-                variant="outline" 
-                className="h-16 sm:h-20 flex flex-col gap-1 sm:gap-2 text-xs sm:text-sm"
-                onClick={() => navigate('/events')}
-              >
-                <FileText className="h-4 w-4 sm:h-6 sm:w-6" />
-                <span className="hidden sm:inline">View Events</span>
-                <span className="sm:hidden">Events</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-16 sm:h-20 flex flex-col gap-1 sm:gap-2 text-xs sm:text-sm"
-                onClick={() => navigate('/events')}
-              >
-                <Users className="h-4 w-4 sm:h-6 sm:w-6" />
-                <span className="hidden sm:inline">Event Tasks</span>
-                <span className="sm:hidden">Tasks</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-16 sm:h-20 flex flex-col gap-1 sm:gap-2 text-xs sm:text-sm"
-                onClick={() => navigate('/events')}
-              >
-                <TrendingUp className="h-4 w-4 sm:h-6 sm:w-6" />
-                <span className="hidden sm:inline">Event Overview</span>
-                <span className="sm:hidden">Overview</span>
-              </Button>
             </div>
           </CardContent>
         </Card>

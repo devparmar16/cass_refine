@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import AssignTaskModal from '@/pages/chair/AssignTaskModal';
 import CopyTasksModal from '@/components/CopyTasksModal';
 import { TaskTemplatesProvider } from '@/contexts/TaskTemplatesContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTasks } from '@/contexts/TasksContext';
 import TaskCard from '@/components/TaskCard';
 import { hardDeleteTask } from '@/lib/taskActions';
 import { Trash2 } from 'lucide-react';
@@ -25,146 +26,73 @@ import {
 function EventTasksContent() {
   const { eventId, role: urlRole, section } = useParams();
   const { user } = useAuth();
+  const { getMyTasks, getReviewTasks, getUploadedTasks, getTasksByEvent, getAllTasks, getEventName, loading: tasksLoading } = useTasks();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [tab, setTab] = useState(section || 'mytasks');
   const [refreshKey, setRefreshKey] = useState(0);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
   
   // Chair-only: Manage all tasks view
   const [showAllTasksView, setShowAllTasksView] = useState(false);
-  const [allTasks, setAllTasks] = useState([]);
-  const [allTasksLoading, setAllTasksLoading] = useState(false);
   const [deletingTaskId, setDeletingTaskId] = useState(null);
   const [taskToDelete, setTaskToDelete] = useState(null); // For delete confirmation dialog
 
   // Convert user role to database format using normalizeRole
   const currentUserRole = normalizeRole(user?.role) || 'chair_person';
 
+  // Get event name from context
   useEffect(() => {
-    const fetchEvent = async () => {
-      if (!eventId) return;
-      const { data, error } = await supabase.from('events').select('id,event_name').eq('id', eventId).single();
-      if (!error) setEvent(data);
-    };
-    fetchEvent();
-  }, [eventId]);
+    if (eventId && getEventName) {
+      const eventName = getEventName(eventId);
+      if (eventName) {
+        setEvent({ id: eventId, event_name: eventName });
+      }
+    }
+  }, [eventId, getEventName]);
 
   useEffect(() => {
     setTab(section || 'mytasks');
   }, [section]);
 
-  // Fetch tasks based on current tab
-  const fetchTasks = async () => {
-    setLoading(true);
-    try {
-      console.log('[EventTasks] Fetching tasks:', { eventId, currentUserRole, tab });
-      
-      if (tab === 'uploaded') {
-        // /uploaded: Show tasks where user has submissions (regardless of status)
-        // OR completed tasks for upload_type='none' (manual tasks)
-        
-        // First get task IDs where user has submissions
-        const { data: submissions } = await supabase
-          .from('task_submissions')
-          .select('task_id')
-          .eq('submitted_by_role', currentUserRole);
-
-        const taskIds = [...new Set(submissions?.map(s => s.task_id) || [])];
-
-        // Also fetch completed 'none' type tasks directly
-        const { data: completedNoneTasks } = await supabase
-          .from('tasks_temp')
-          .select('*')
-          .eq('event_id', eventId)
-          .eq('assigned_to', currentUserRole)
-          .eq('upload_type', 'none')
-          .eq('status', 'completed');
-
-        // Fetch tasks with submissions
-        let tasksWithSubmissions = [];
-        if (taskIds.length > 0) {
-          const { data, error } = await supabase
-            .from('tasks_temp')
-            .select('*')
-            .eq('event_id', eventId)
-            .eq('assigned_to', currentUserRole)
-            .in('id', taskIds)
-            .order('created_at', { ascending: true });
-
-          if (error) throw error;
-          tasksWithSubmissions = data || [];
-        }
-
-        // Merge both lists (avoid duplicates)
-        const allUploadedTasks = [...tasksWithSubmissions];
-        (completedNoneTasks || []).forEach(t => {
-          if (!allUploadedTasks.find(existing => existing.id === t.id)) {
-            allUploadedTasks.push(t);
+  // Derive tasks from context based on tab - NO DB FETCH
+  const tasks = useMemo(() => {
+    if (!eventId) return [];
+    
+    const allEventTasks = getTasksByEvent(eventId);
+    
+    switch (tab) {
+      case 'mytasks':
+        return allEventTasks.filter(t => 
+          t.assigned_to === currentUserRole && 
+          ['assigned', 'pending', 'rejected', 'in_progress'].includes(t.status)
+        );
+      case 'reviews':
+        return allEventTasks.filter(t => 
+          t.current_reviewer_role === currentUserRole && 
+          t.status === 'in_review'
+        );
+      case 'uploaded':
+        return allEventTasks.filter(t => {
+          if (t.assigned_to === currentUserRole && t.upload_type === 'none' && t.status === 'completed') {
+            return true;
           }
+          return t.has_user_submission && t.assigned_to === currentUserRole;
         });
-
-        setTasks(allUploadedTasks);
-      } else {
-        // /mytasks and /reviews - normal queries
-        let query = supabase.from('tasks_temp').select('*').eq('event_id', eventId);
-
-        switch (tab) {
-          case 'mytasks':
-            // Include 'in_progress' for upload_type='none' manual tasks
-            query = query.eq('assigned_to', currentUserRole).in('status', ['assigned', 'pending', 'rejected', 'in_progress']);
-            break;
-          case 'reviews':
-            query = query.eq('current_reviewer_role', currentUserRole).eq('status', 'in_review');
-            break;
-        }
-
-        const { data, error } = await query.order('created_at', { ascending: true });
-        console.log('[EventTasks] Query result:', { data, error });
-        
-        if (error) throw error;
-        setTasks(data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching tasks:', err);
-      setTasks([]);
-    } finally {
-      setLoading(false);
+      default:
+        return [];
     }
-  };
+  }, [eventId, tab, currentUserRole, getTasksByEvent]);
 
-  useEffect(() => {
-    if (eventId && currentUserRole) {
-      fetchTasks();
-    }
-  }, [eventId, currentUserRole, tab, refreshKey]);
+  // Chair-only: All tasks for this event from context
+  const allTasks = useMemo(() => {
+    if (!eventId) return [];
+    return getTasksByEvent(eventId);
+  }, [eventId, getTasksByEvent]);
 
   const handleTaskAssigned = () => {
     setRefreshKey(k => k + 1);
-  };
-
-  // Chair-only: Fetch all tasks for this event
-  const fetchAllTasks = async () => {
-    setAllTasksLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('tasks_temp')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('assigned_to', { ascending: true })
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setAllTasks(data || []);
-    } catch (err) {
-      console.error('Error fetching all tasks:', err);
-      setAllTasks([]);
-    } finally {
-      setAllTasksLoading(false);
-    }
   };
 
   // Chair-only: Delete task entirely
@@ -198,11 +126,8 @@ function EventTasksContent() {
     }
   };
 
-  // Toggle all tasks view
+  // Toggle all tasks view - using context data
   const toggleAllTasksView = () => {
-    if (!showAllTasksView) {
-      fetchAllTasks();
-    }
     setShowAllTasksView(!showAllTasksView);
   };
 
@@ -300,7 +225,7 @@ function EventTasksContent() {
             </span>
           </div>
 
-          {allTasksLoading ? (
+          {tasksLoading ? (
             <p className="text-gray-500">Loading all tasks...</p>
           ) : allTasks.length === 0 ? (
             <p className="text-gray-500">No tasks found for this event.</p>
@@ -356,7 +281,7 @@ function EventTasksContent() {
 
       {/* Task list */}
       <div className="mb-4">
-        {loading ? (
+        {tasksLoading ? (
           <p className="text-gray-500">Loading tasks...</p>
         ) : tasks.length === 0 ? (
           <p className="text-gray-500">No tasks in this section.</p>
@@ -366,7 +291,7 @@ function EventTasksContent() {
               key={task.id}
               task={task}
               userRole={currentUserRole}
-              onRefresh={fetchTasks}
+              onRefresh={() => setRefreshKey(k => k + 1)}
               tab={tab}
             />
           ))

@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { RolesProvider } from "@/contexts/RolesContext";
+import { TasksProvider } from "@/contexts/TasksContext";
 import Layout from "@/components/Layout";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -163,8 +164,9 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <RolesProvider>
-          <BrowserRouter future={{ v7_startTransition: true }}>
-            <Routes>
+          <TasksProvider>
+            <BrowserRouter future={{ v7_startTransition: true }}>
+              <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -235,6 +237,7 @@ const App = () => (
             } />
             </Routes>
           </BrowserRouter>
+        </TasksProvider>
         </RolesProvider>
       </AuthProvider>
     </TooltipProvider>

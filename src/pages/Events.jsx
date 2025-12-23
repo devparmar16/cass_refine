@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTasks } from '@/contexts/TasksContext';
 
 // Add fade-in animation CSS (same as task sections)
 const fadeInStyle = `
@@ -65,6 +66,7 @@ import { useNavigate } from 'react-router-dom';
 export default function Events() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { events: contextEvents, eventsLoading, refreshEvents } = useTasks();
 
   // Inject the fade-in animation CSS
   React.useEffect(() => {
@@ -76,7 +78,8 @@ export default function Events() {
     };
   }, []);
 
-  const [events, setEvents] = useState([]);
+  // Use events from context
+  const events = contextEvents || [];
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingPendingTasks, setIsLoadingPendingTasks] = useState(false);
@@ -136,48 +139,20 @@ export default function Events() {
   // const [pendingTasksForLock, setPendingTasksForLock] = useState([]); // Moved to top
   // const [isLoadingPendingTasks, setIsLoadingPendingTasks] = useState(false); // Moved to top
 
+  // Events come from context, no fetch needed
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        setIsLoading(true);
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .order('event_date', { ascending: true });
-
-      if (error) {
-          console.error('Error fetching events:', error);
-          toast({ 
-            title: 'Failed to load events', 
-            description: error.message, 
-            variant: 'destructive' 
-          });
-        return;
-      }
-
-      if (data) {
-        setEvents(data);
-        // Track locked status
-        const lockedMap = {};
-          data.forEach(ev => { 
-            lockedMap[ev.id] = !!ev.locked; 
-          });
-        setLockedEvents(lockedMap);
-        }
-      } catch (error) {
-        console.error('Unexpected error fetching events:', error);
-        toast({ 
-          title: 'Failed to load events', 
-          description: 'An unexpected error occurred', 
-          variant: 'destructive' 
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchEvents();
-  }, [toast]);
+    console.log('[Events.jsx] Context events:', contextEvents?.length, contextEvents);
+    console.log('[Events.jsx] Events loading:', eventsLoading);
+    setIsLoading(eventsLoading);
+    // Track locked status from context events
+    if (events.length > 0) {
+      const lockedMap = {};
+      events.forEach(ev => { 
+        lockedMap[ev.id] = !!ev.locked; 
+      });
+      setLockedEvents(lockedMap);
+    }
+  }, [events, eventsLoading, contextEvents]);
 
   // Function to fetch pending tasks for an event
   const fetchPendingTasksForEvent = useCallback(async (eventId, eventName) => {
@@ -278,7 +253,9 @@ export default function Events() {
     }
 
     if (eventData) {
-      setEvents((prev) => [...prev, eventData]);
+      // Refresh events from context
+      await refreshEvents();
+      
       setName('');
       setDescription('');
       setDate(undefined);
@@ -349,9 +326,32 @@ export default function Events() {
     }
   }, []);
 
-  // Optimized delete handler
+  // Optimized delete handler with cascade delete for related data
   const handleDelete = useCallback(async (id) => {
     try {
+      // Delete all related data first before deleting the event
+      
+      // 1. Delete task submissions
+      const { error: submissionsError } = await supabase
+        .from('task_submissions')
+        .delete()
+        .eq('event_id', id);
+      
+      if (submissionsError) {
+        console.error('Error deleting task submissions:', submissionsError);
+      }
+
+      // 2. Delete tasks from tasks_temp
+      const { error: tasksError } = await supabase
+        .from('tasks_temp')
+        .delete()
+        .eq('event_id', id);
+      
+      if (tasksError) {
+        console.error('Error deleting tasks:', tasksError);
+      }
+
+      // 3. Finally delete the event itself
       const { error } = await supabase
         .from('events')
         .delete()
@@ -376,7 +376,7 @@ export default function Events() {
         }
         return updated;
       });
-      toast({ title: 'Event Deleted', description: 'Event removed successfully.' });
+      toast({ title: 'Event Deleted', description: 'Event and all related data removed successfully.' });
     } catch (error) {
       console.error('Unexpected error deleting event:', error);
       toast({ 
