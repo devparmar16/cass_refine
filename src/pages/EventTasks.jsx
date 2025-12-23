@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,6 @@ import AssignTaskModal from '@/pages/chair/AssignTaskModal';
 import CopyTasksModal from '@/components/CopyTasksModal';
 import { TaskTemplatesProvider } from '@/contexts/TaskTemplatesContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTasks } from '@/contexts/TasksContext';
 import TaskCard from '@/components/TaskCard';
 import { hardDeleteTask } from '@/lib/taskActions';
 import { Trash2, ArrowLeft, ClipboardList, CheckSquare, Upload, Copy, Settings, X } from 'lucide-react';
@@ -28,10 +27,11 @@ import {
 function EventTasksContent() {
   const { eventId, role: urlRole, section } = useParams();
   const { user } = useAuth();
-  const { getMyTasks, getReviewTasks, getUploadedTasks, getTasksByEvent, getAllTasks, getEventName, loading: tasksLoading } = useTasks();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [tab, setTab] = useState(section || 'mytasks');
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
@@ -39,63 +39,127 @@ function EventTasksContent() {
   // Chair-only: Manage all tasks view
   const [showAllTasksView, setShowAllTasksView] = useState(false);
   const [deletingTaskId, setDeletingTaskId] = useState(null);
-  const [taskToDelete, setTaskToDelete] = useState(null); // For delete confirmation dialog
+  const [taskToDelete, setTaskToDelete] = useState(null);
+  const [allTasks, setAllTasks] = useState([]);
 
   // Convert user role to database format using normalizeRole
   const currentUserRole = normalizeRole(user?.role) || 'chair_person';
 
-  // Get event name from context
+  // Fetch event details
   useEffect(() => {
-    if (eventId && getEventName) {
-      const eventName = getEventName(eventId);
-      if (eventName) {
-        setEvent({ id: eventId, event_name: eventName });
-      }
-    }
-  }, [eventId, getEventName]);
+    if (!eventId) return;
+    
+    const fetchEvent = async () => {
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, event_name, event_desc, event_date, status')
+        .eq('id', eventId)
+        .single();
+      
+      if (data) setEvent(data);
+    };
+    
+    fetchEvent();
+  }, [eventId]);
 
   useEffect(() => {
     setTab(section || 'mytasks');
   }, [section]);
 
-  // Derive tasks from context based on tab - NO DB FETCH
-  const tasks = useMemo(() => {
-    if (!eventId) return [];
-    
-    const allEventTasks = getTasksByEvent(eventId);
-    
-    switch (tab) {
-      case 'mytasks':
-        return allEventTasks.filter(t => 
-          t.assigned_to === currentUserRole && 
-          ['assigned', 'pending', 'rejected', 'in_progress'].includes(t.status)
-        );
-      case 'reviews':
-        return allEventTasks.filter(t => 
-          t.current_reviewer_role === currentUserRole && 
-          t.status === 'in_review'
-        );
-      case 'uploaded':
-        return allEventTasks.filter(t => {
-          if (t.assigned_to === currentUserRole && t.upload_type === 'none' && t.status === 'completed') {
-            return true;
-          }
-          return t.has_user_submission && t.assigned_to === currentUserRole;
-        });
-      default:
-        return [];
-    }
-  }, [eventId, tab, currentUserRole, getTasksByEvent]);
+  // Fetch tasks based on current tab
+  useEffect(() => {
+    if (!eventId || !currentUserRole) return;
 
-  // Chair-only: All tasks for this event from context
-  const allTasks = useMemo(() => {
-    if (!eventId) return [];
-    return getTasksByEvent(eventId);
-  }, [eventId, getTasksByEvent]);
+    const fetchTasks = async () => {
+      setLoading(true);
+      try {
+        let query = supabase
+          .from('tasks_temp')
+          .select('*')
+          .eq('event_id', eventId)
+          .order('created_at', { ascending: false });
+
+        let fetchedTasks = [];
+
+        if (tab === 'mytasks') {
+          // Tasks assigned to me with specific statuses
+          const { data, error } = await query
+            .eq('assigned_to', currentUserRole)
+            .in('status', ['assigned', 'pending', 'rejected', 'in_progress']);
+          
+          if (error) throw error;
+          fetchedTasks = data || [];
+
+        } else if (tab === 'reviews') {
+          // Tasks where I'm the current reviewer and status is in_review
+          const { data, error } = await query
+            .eq('current_reviewer_role', currentUserRole)
+            .eq('status', 'in_review');
+          
+          if (error) throw error;
+          fetchedTasks = data || [];
+
+        } else if (tab === 'uploaded') {
+          // Tasks I uploaded - check submissions
+          const { data: submissions, error: subError } = await supabase
+            .from('task_submissions')
+            .select('task_id')
+            .eq('submitted_by_role', currentUserRole);
+
+          if (subError) throw subError;
+
+          const taskIds = (submissions || []).map(s => s.task_id);
+
+          // Get tasks that are either uploaded status OR have my submissions
+          const { data: uploadedTasks, error: tasksError } = await supabase
+            .from('tasks_temp')
+            .select('*')
+            .eq('event_id', eventId)
+            .eq('assigned_to', currentUserRole);
+
+          if (tasksError) throw tasksError;
+
+          // Filter: status='uploaded' OR task_id in submission list
+          fetchedTasks = (uploadedTasks || []).filter(t => 
+            t.status === 'uploaded' || taskIds.includes(t.id)
+          );
+        }
+
+        setTasks(fetchedTasks);
+      } catch (err) {
+        console.error('[EventTasks] Fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, [eventId, tab, currentUserRole, refreshKey]);
 
   const handleTaskAssigned = () => {
     setRefreshKey(k => k + 1);
   };
+
+  const onRefresh = () => {
+    setRefreshKey(k => k + 1);
+  };
+
+  // Fetch all tasks for chair view
+  useEffect(() => {
+    if (!eventId || !showAllTasksView) return;
+
+    const fetchAllTasks = async () => {
+      const { data, error } = await supabase
+        .from('tasks_temp')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: false });
+
+      if (data) setAllTasks(data);
+    };
+
+    fetchAllTasks();
+  }, [eventId, showAllTasksView, refreshKey]);
 
   // Chair-only: Delete task entirely
   const handleDeleteTask = async (task) => {
@@ -288,7 +352,7 @@ function EventTasksContent() {
             </div>
           </CardHeader>
           <CardContent>
-            {tasksLoading ? (
+            {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-pulse flex items-center gap-3">
                   <div className="h-5 w-5 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
@@ -367,7 +431,7 @@ function EventTasksContent() {
       {/* Task list */}
       <Card className="border-gray-100">
         <CardContent className="p-4 sm:p-6">
-          {tasksLoading ? (
+          {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-pulse flex flex-col items-center gap-3">
                 <div className="h-6 w-6 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -398,7 +462,7 @@ function EventTasksContent() {
                   key={task.id}
                   task={task}
                   userRole={currentUserRole}
-                  onRefresh={() => setRefreshKey(k => k + 1)}
+                  onRefresh={onRefresh}
                   tab={tab}
                 />
               ))}

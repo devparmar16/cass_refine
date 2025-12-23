@@ -12,6 +12,9 @@ export const AuthProvider = ({ children }) => {
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
       const parsed = JSON.parse(savedUser);
+      // Ensure id and displayName exist for compatibility
+      if (!parsed.id) parsed.id = parsed.username;
+      if (!parsed.displayName) parsed.displayName = parsed.disp_name;
       setUser(parsed);
       // Check if profile is complete from saved user
       const isComplete = !!parsed.email && !!parsed.contact_num && !!parsed.disp_name;
@@ -39,11 +42,13 @@ export const AuthProvider = ({ children }) => {
       }
 
       const userData = {
+        id: data.username, // Use username as unique id
         username: data.username,
         email: data.email,
         contact_num: data.contact_num,
         role: data.role,
         disp_name: data.disp_name,
+        displayName: data.disp_name, // Alias for compatibility
         profile_img: data.profile_img,
       };
 

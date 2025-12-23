@@ -336,109 +336,144 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
 
   /* ---------------- ACCEPT / REJECT ---------------- */
   const handleAcceptReject = async (action, comment = '') => {
-    const { data: steps } = await supabase
-      .from('review_flow_template_steps')
-      .select('*')
-      .eq('template_id', task.flow_template_id)
-      .order('step_order', { ascending: true });
+    try {
+      // Fetch review flow steps
+      const { data: steps, error: stepsError } = await supabase
+        .from('review_flow_template_steps')
+        .select('*')
+        .eq('template_id', task.flow_template_id)
+        .order('step_order', { ascending: true });
 
-    let update = {};
-    const nextStep = (task.current_step ?? 0) + 1;
-    let isFinalAccept = false;
+      if (stepsError) {
+        console.error('[TaskCard] Error fetching review steps:', stepsError);
+        alert('Failed to fetch review flow steps: ' + stepsError.message);
+        return;
+      }
 
-    if (action === 'accept') {
-      if (nextStep >= steps.length) {
-        // All reviewers done → uploaded (final accept)
+      if (!steps || steps.length === 0) {
+        console.error('[TaskCard] No review steps found for template:', task.flow_template_id);
+        alert('No review flow configured for this task');
+        return;
+      }
+
+      let update = {};
+      const nextStep = (task.current_step ?? 0) + 1;
+      let isFinalAccept = false;
+
+      if (action === 'accept') {
+        if (nextStep >= steps.length) {
+          // All reviewers done → uploaded (final accept)
+          update = {
+            status: 'uploaded',
+            current_reviewer_role: null,
+            current_step: nextStep,
+          };
+          isFinalAccept = true;
+        } else {
+          // Move to next reviewer
+          update = {
+            status: 'in_review',
+            current_step: nextStep,
+            current_reviewer_role: steps[nextStep].reviewer_role,
+          };
+        }
+      }
+
+      if (action === 'reject') {
+        // Back to assignee
         update = {
-          status: 'uploaded',
+          status: 'rejected',
           current_reviewer_role: null,
-          current_step: nextStep,
-        };
-        isFinalAccept = true;
-      } else {
-        // Move to next reviewer
-        update = {
-          status: 'in_review',
-          current_step: nextStep,
-          current_reviewer_role: steps[nextStep].reviewer_role,
+          current_step: 0,
         };
       }
-    }
 
-    if (action === 'reject') {
-      // Back to assignee
-      update = {
-        status: 'rejected',
-        current_reviewer_role: null,
-        current_step: 0,
-      };
-    }
+      const { error: updateError } = await supabase
+        .from('tasks_temp')
+        .update(update)
+        .eq('id', task.id);
 
-    await supabase.from('tasks_temp').update(update).eq('id', task.id);
+      if (updateError) {
+        console.error('[TaskCard] Error updating task:', updateError);
+        alert('Failed to update task: ' + updateError.message);
+        return;
+      }
 
-    // Always insert flow log for accept/reject
-    await supabase.from('task_comments').insert({
-      task_id: task.id,
-      comment: `[__FLOW__][${action.toUpperCase()}] ${userRole}`,
-      author_role: userRole,
-    });
-
-    // If user provided a comment, insert it separately as a real comment
-    if (comment) {
-      await supabase.from('task_comments').insert({
+      // Always insert flow log for accept/reject
+      const { error: flowLogError } = await supabase.from('task_comments').insert({
         task_id: task.id,
-        comment: comment,
+        comment: `[__FLOW__][${action.toUpperCase()}] ${userRole}`,
         author_role: userRole,
       });
-    }
 
-    // ========== EMAIL NOTIFICATIONS (after status update) ==========
-    // Fetch event name for email
-    let eventName = 'Unknown Event';
-    if (task.event_id) {
-      const { data: eventData } = await supabase
-        .from('events')
-        .select('event_name')
-        .eq('id', task.event_id)
-        .single();
-      if (eventData?.event_name) {
-        eventName = eventData.event_name;
+      if (flowLogError) {
+        console.error('[TaskCard] Error inserting flow log:', flowLogError);
       }
-    }
 
-    // Send rejection email when any reviewer rejects
-    if (action === 'reject') {
-      const rejectionReason = extractRejectionReason(comment);
-      sendTaskRejectedEmail({
-        taskName: task.task_name,
-        eventName,
-        assignedToLabel: task.assigned_to_label || task.assigned_to,
-        reviewerRole: userRole,
-        rejectionReason
-      }).catch(err => console.error('Failed to send rejection email:', err));
-    }
+      // If user provided a comment, insert it separately as a real comment
+      if (comment) {
+        const { error: commentError } = await supabase.from('task_comments').insert({
+          task_id: task.id,
+          comment: comment,
+          author_role: userRole,
+        });
 
-    // Send acceptance email only when final reviewer accepts
-    if (action === 'accept' && isFinalAccept) {
-      console.log('[TaskCard] Sending acceptance email for task:', {
-        task_name: task.task_name,
-        assigned_to: task.assigned_to,
-        assigned_to_label: task.assigned_to_label,
-        userRole
-      });
-      
-      sendTaskAcceptedEmail({
-        taskName: task.task_name,
-        eventName,
-        assignedToLabel: task.assigned_to_label || task.assigned_to,
-        reviewerRole: userRole
-      }).catch(err => console.error('Failed to send acceptance email:', err));
-    }
-    // ========== END EMAIL NOTIFICATIONS ==========
+        if (commentError) {
+          console.error('[TaskCard] Error inserting comment:', commentError);
+        }
+      }
 
-    setShowRejectModal(false);
-    setRejectComment('');
-    onRefresh?.();
+      // ========== EMAIL NOTIFICATIONS (after status update) ==========
+      // Fetch event name for email
+      let eventName = 'Unknown Event';
+      if (task.event_id) {
+        const { data: eventData } = await supabase
+          .from('events')
+          .select('event_name')
+          .eq('id', task.event_id)
+          .single();
+        if (eventData?.event_name) {
+          eventName = eventData.event_name;
+        }
+      }
+
+      // Send rejection email when any reviewer rejects
+      if (action === 'reject') {
+        const rejectionReason = extractRejectionReason(comment);
+        sendTaskRejectedEmail({
+          taskName: task.task_name,
+          eventName,
+          assignedToLabel: task.assigned_to_label || task.assigned_to,
+          reviewerRole: userRole,
+          rejectionReason
+        }).catch(err => console.error('Failed to send rejection email:', err));
+      }
+
+      // Send acceptance email only when final reviewer accepts
+      if (action === 'accept' && isFinalAccept) {
+        console.log('[TaskCard] Sending acceptance email for task:', {
+          task_name: task.task_name,
+          assigned_to: task.assigned_to,
+          assigned_to_label: task.assigned_to_label,
+          userRole
+        });
+        
+        sendTaskAcceptedEmail({
+          taskName: task.task_name,
+          eventName,
+          assignedToLabel: task.assigned_to_label || task.assigned_to,
+          reviewerRole: userRole
+        }).catch(err => console.error('Failed to send acceptance email:', err));
+      }
+      // ========== END EMAIL NOTIFICATIONS ==========
+
+      setShowRejectModal(false);
+      setRejectComment('');
+      onRefresh?.();
+    } catch (err) {
+      console.error('[TaskCard] Error in handleAcceptReject:', err);
+      alert('An error occurred: ' + err.message);
+    }
   };
 
   /* ---------------- UI ---------------- */

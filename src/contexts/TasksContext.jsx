@@ -13,27 +13,14 @@ export const useTasks = () => {
   return context;
 };
 
-const TASKS_CACHE_KEY = 'tasks_cache';
-const EVENTS_CACHE_KEY = 'events_cache';
-const TASKS_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
-const EVENTS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes for events
-
 /**
  * TasksProvider - Central source of truth for all task data
  * 
  * FEATURES:
- * - Single DB fetch per login (with cache validation)
- * - localStorage persistence
+ * - Direct DB fetch on mount
  * - Individual task updates (no refetch)
  * - Derived state for dashboards
  * - Real-time subscriptions
- * 
- * CACHE VALIDATION:
- * Fetches from DB only if:
- * 1. No cache exists
- * 2. Cached userId ≠ current user
- * 3. Cached role ≠ current role
- * 4. Cache is older than TTL (2 minutes)
  */
 export const TasksProvider = ({ children }) => {
   const { user } = useAuth();
@@ -46,86 +33,6 @@ export const TasksProvider = ({ children }) => {
 
   const userRole = normalizeRole(user?.role);
 
-  // Load from cache
-  const loadFromCache = useCallback(() => {
-    try {
-      const cached = localStorage.getItem(TASKS_CACHE_KEY);
-      if (!cached) return null;
-
-      const data = JSON.parse(cached);
-      
-      // Validate cache
-      if (
-        data.userId !== user?.id ||
-        data.role !== userRole ||
-        Date.now() - data.lastFetchedAt > TASKS_CACHE_TTL
-      ) {
-        console.log('[TasksContext] Cache invalid or expired');
-        return null;
-      }
-
-      console.log('[TasksContext] Loading from cache');
-      return data;
-    } catch (err) {
-      console.error('[TasksContext] Cache read error:', err);
-      return null;
-    }
-  }, [user?.id, userRole]);
-
-  // Save to cache
-  const saveToCache = useCallback((tasksData) => {
-    try {
-      const cacheData = {
-        userId: user?.id,
-        role: userRole,
-        lastFetchedAt: Date.now(),
-        tasks: tasksData,
-      };
-      localStorage.setItem(TASKS_CACHE_KEY, JSON.stringify(cacheData));
-      console.log('[TasksContext] Saved to cache');
-    } catch (err) {
-      console.error('[TasksContext] Cache write error:', err);
-    }
-  }, [user?.id, userRole]);
-
-  // Load events from cache
-  const loadEventsFromCache = useCallback(() => {
-    try {
-      const cached = localStorage.getItem(EVENTS_CACHE_KEY);
-      if (!cached) return null;
-
-      const data = JSON.parse(cached);
-      
-      // Validate cache (events don't need role validation)
-      if (
-        Date.now() - data.lastFetchedAt > EVENTS_CACHE_TTL
-      ) {
-        console.log('[TasksContext] Events cache expired');
-        return null;
-      }
-
-      console.log('[TasksContext] Loading events from cache');
-      return data;
-    } catch (err) {
-      console.error('[TasksContext] Events cache read error:', err);
-      return null;
-    }
-  }, []);
-
-  // Save events to cache
-  const saveEventsToCache = useCallback((eventsData) => {
-    try {
-      const cacheData = {
-        lastFetchedAt: Date.now(),
-        events: eventsData,
-      };
-      localStorage.setItem(EVENTS_CACHE_KEY, JSON.stringify(cacheData));
-      console.log('[TasksContext] Saved events to cache');
-    } catch (err) {
-      console.error('[TasksContext] Events cache write error:', err);
-    }
-  }, []);
-
   // Fetch tasks from DB
   const fetchTasksFromDB = useCallback(async () => {
     if (!user || !userRole) return;
@@ -135,7 +42,6 @@ export const TasksProvider = ({ children }) => {
 
     try {
       // Fetch ALL tasks the user has access to
-      // This includes: assigned_to, current_reviewer_role, and submissions
       const { data: allTasks, error } = await supabase
         .from('tasks_temp')
         .select('*')
@@ -165,7 +71,6 @@ export const TasksProvider = ({ children }) => {
 
       setTasks(enrichedTasks);
       setLastFetchedAt(Date.now());
-      saveToCache(enrichedTasks);
 
       console.log(`[TasksContext] Fetched ${enrichedTasks.length} tasks`);
     } catch (err) {
@@ -174,7 +79,7 @@ export const TasksProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [user, userRole, saveToCache]);
+  }, [user, userRole]);
 
   // Fetch events from DB
   const fetchEventsFromDB = useCallback(async () => {
@@ -191,7 +96,6 @@ export const TasksProvider = ({ children }) => {
 
       setEvents(allEvents || []);
       setEventsLastFetchedAt(Date.now());
-      saveEventsToCache(allEvents || []);
 
       console.log(`[TasksContext] Fetched ${allEvents?.length || 0} events`);
     } catch (err) {
@@ -200,9 +104,9 @@ export const TasksProvider = ({ children }) => {
     } finally {
       setEventsLoading(false);
     }
-  }, [saveEventsToCache]);
+  }, []);
 
-  // Initialize: Check cache first, then fetch if needed
+  // Initialize: Fetch on mount
   useEffect(() => {
     if (!user || !userRole) {
       setTasks([]);
@@ -210,33 +114,13 @@ export const TasksProvider = ({ children }) => {
       return;
     }
 
-    const cachedData = loadFromCache();
-    
-    if (cachedData) {
-      // Use cached data
-      setTasks(cachedData.tasks);
-      setLastFetchedAt(cachedData.lastFetchedAt);
-      setLoading(false);
-    } else {
-      // Fetch from DB
-      fetchTasksFromDB();
-    }
-  }, [user, userRole, loadFromCache, fetchTasksFromDB]);
+    fetchTasksFromDB();
+  }, [user, userRole, fetchTasksFromDB]);
 
-  // Initialize events: Check cache first, then fetch if needed
+  // Initialize events: Fetch on mount
   useEffect(() => {
-    const cachedEventsData = loadEventsFromCache();
-    
-    if (cachedEventsData) {
-      // Use cached data
-      setEvents(cachedEventsData.events);
-      setEventsLastFetchedAt(cachedEventsData.lastFetchedAt);
-      setEventsLoading(false);
-    } else {
-      // Fetch from DB
-      fetchEventsFromDB();
-    }
-  }, [loadEventsFromCache, fetchEventsFromDB]);
+    fetchEventsFromDB();
+  }, [fetchEventsFromDB]);
 
   // Real-time subscriptions for task changes
   useEffect(() => {
@@ -255,23 +139,11 @@ export const TasksProvider = ({ children }) => {
           console.log('[TasksContext] Real-time update:', payload.eventType);
           
           if (payload.eventType === 'INSERT') {
-            setTasks(prev => {
-              const newTasks = [payload.new, ...prev];
-              saveToCache(newTasks);
-              return newTasks;
-            });
+            setTasks(prev => [payload.new, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
-            setTasks(prev => {
-              const updated = prev.map(t => t.id === payload.new.id ? payload.new : t);
-              saveToCache(updated);
-              return updated;
-            });
+            setTasks(prev => prev.map(t => t.id === payload.new.id ? payload.new : t));
           } else if (payload.eventType === 'DELETE') {
-            setTasks(prev => {
-              const filtered = prev.filter(t => t.id !== payload.old.id);
-              saveToCache(filtered);
-              return filtered;
-            });
+            setTasks(prev => prev.filter(t => t.id !== payload.old.id));
           }
         }
       )
@@ -280,7 +152,7 @@ export const TasksProvider = ({ children }) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userRole, saveToCache]);
+  }, [userRole]);
 
   // Real-time subscriptions for events changes
   useEffect(() => {
@@ -297,23 +169,11 @@ export const TasksProvider = ({ children }) => {
           console.log('[TasksContext] Events real-time update:', payload.eventType);
           
           if (payload.eventType === 'INSERT') {
-            setEvents(prev => {
-              const newEvents = [payload.new, ...prev];
-              saveEventsToCache(newEvents);
-              return newEvents;
-            });
+            setEvents(prev => [payload.new, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
-            setEvents(prev => {
-              const updated = prev.map(e => e.id === payload.new.id ? payload.new : e);
-              saveEventsToCache(updated);
-              return updated;
-            });
+            setEvents(prev => prev.map(e => e.id === payload.new.id ? payload.new : e));
           } else if (payload.eventType === 'DELETE') {
-            setEvents(prev => {
-              const filtered = prev.filter(e => e.id !== payload.old.id);
-              saveEventsToCache(filtered);
-              return filtered;
-            });
+            setEvents(prev => prev.filter(e => e.id !== payload.old.id));
           }
         }
       )
@@ -322,7 +182,7 @@ export const TasksProvider = ({ children }) => {
     return () => {
       supabase.removeChannel(eventsChannel);
     };
-  }, [saveEventsToCache]);
+  }, []);
 
   // ============================================
   // PUBLIC API - Task Getters (Derived State)
@@ -367,31 +227,19 @@ export const TasksProvider = ({ children }) => {
   // ============================================
 
   const updateTaskInContext = useCallback((updatedTask) => {
-    setTasks(prev => {
-      const updated = prev.map(t => t.id === updatedTask.id ? { ...t, ...updatedTask } : t);
-      saveToCache(updated);
-      return updated;
-    });
+    setTasks(prev => prev.map(t => t.id === updatedTask.id ? { ...t, ...updatedTask } : t));
     console.log('[TasksContext] Updated task in context:', updatedTask.id);
-  }, [saveToCache]);
+  }, []);
 
   const removeTaskFromContext = useCallback((taskId) => {
-    setTasks(prev => {
-      const filtered = prev.filter(t => t.id !== taskId);
-      saveToCache(filtered);
-      return filtered;
-    });
+    setTasks(prev => prev.filter(t => t.id !== taskId));
     console.log('[TasksContext] Removed task from context:', taskId);
-  }, [saveToCache]);
+  }, []);
 
   const addTaskToContext = useCallback((newTask) => {
-    setTasks(prev => {
-      const updated = [newTask, ...prev];
-      saveToCache(updated);
-      return updated;
-    });
+    setTasks(prev => [newTask, ...prev]);
     console.log('[TasksContext] Added task to context:', newTask.id);
-  }, [saveToCache]);
+  }, []);
 
   // ============================================
   // PUBLIC API - Dashboard Metrics (Derived)
