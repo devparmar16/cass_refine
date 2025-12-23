@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useRoles } from '../../contexts/RolesContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTaskTemplates } from '../../contexts/TaskTemplatesContext';
 
 // Remove hardcoded ROLE_OPTIONS - now using context
 // const ROLE_OPTIONS = [...]; ← DELETED
@@ -24,6 +25,7 @@ function hashReviewerChain(chain) {
 const AssignTaskModal = ({ open, onClose, onTaskAssigned }) => {
   const { eventId } = useParams();
   const { roles, loading: rolesLoading } = useRoles(); // Get roles from context
+  const { addTaskToCache } = useTaskTemplates(); // Get addTaskToCache from context
 
   const [state, setState] = useState({
     taskName: '',
@@ -124,7 +126,7 @@ const AssignTaskModal = ({ open, onClose, onTaskAssigned }) => {
         }
       }
 
-      const { error: taskError } = await supabase.from('tasks_temp').insert({
+      const { data: newTask, error: taskError } = await supabase.from('tasks_temp').insert({
         task_name: state.taskName,
         task_desc: state.taskDesc,
         assigned_to: state.assignedTo?.value || roles[0]?.value, // Normalized value
@@ -136,9 +138,14 @@ const AssignTaskModal = ({ open, onClose, onTaskAssigned }) => {
         status: 'assigned',
         upload_type: state.uploadType,
         form_schema: state.uploadType === 'form' || state.uploadType === 'form_file' ? state.formSchema : null,
-      });
+      }).select().single();
 
       if (taskError) throw taskError;
+
+      // Add new task to cache
+      if (newTask && addTaskToCache) {
+        addTaskToCache(newTask);
+      }
 
       console.log('Task created with upload_type:', state.uploadType);
       console.log('Form schema:', state.formSchema);

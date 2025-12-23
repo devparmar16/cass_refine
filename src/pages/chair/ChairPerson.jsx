@@ -3,6 +3,8 @@
 // 1. View events created by chair
 // 2. View tasks in mytasks/review/uploaded tabs with TaskCard component
 // 3. Assign tasks via AssignTaskModal
+// 4. Templates section showing all tasks grouped by role
+// 5. Copy Tasks feature to reuse tasks across events
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +12,9 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import TaskCard from '@/components/TaskCard';
 import AssignTaskModal from './AssignTaskModal';
+import CopyTasksModal from '@/components/CopyTasksModal';
+import TemplatesSection from '@/components/TemplatesSection';
+import { TaskTemplatesProvider } from '@/contexts/TaskTemplatesContext';
 import { normalizeRole } from '@/lib/roleUtils';
 
 // --- Event List Component ---
@@ -50,6 +55,8 @@ const EventView = ({ event, onBack, userRole, user }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -107,28 +114,51 @@ const EventView = ({ event, onBack, userRole, user }) => {
           Back to Events
         </button>
         {user?.role === 'Chair Person' && (
-          <button
-            onClick={() => setAssignModalOpen(true)}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-          >
-            Assign Task
-          </button>
+          <>
+            <button
+              onClick={() => setAssignModalOpen(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              Assign Task
+            </button>
+            <button
+              onClick={() => setShowTemplates(!showTemplates)}
+              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+            >
+              {showTemplates ? 'Hide Templates' : 'Show Templates'}
+            </button>
+          </>
         )}
       </div>
       <h3 className="text-lg font-bold mb-4">Event: {event.event_name}</h3>
 
+      {/* Templates Section */}
+      {showTemplates && (
+        <div className="mb-6">
+          <TemplatesSection />
+        </div>
+      )}
+
       <div className="flex gap-4 mb-4">
-        {FILTERS.map(f => (
-          <button
-            key={f}
-            onClick={() => setTab(f)}
-            className={`px-4 py-2 rounded ${
-              tab === f ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'
-            }`}
-          >
-            {f.toUpperCase()}
-          </button>
-        ))}
+        <div className="flex gap-2 flex-1">
+          {FILTERS.map(f => (
+            <button
+              key={f}
+              onClick={() => setTab(f)}
+              className={`px-4 py-2 rounded ${
+                tab === f ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black'
+              }`}
+            >
+              {f.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setCopyModalOpen(true)}
+          className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+        >
+          Copy Tasks
+        </button>
       </div>
 
       {loading ? (
@@ -151,6 +181,12 @@ const EventView = ({ event, onBack, userRole, user }) => {
         onClose={() => setAssignModalOpen(false)}
         onTaskAssigned={fetchTasks}
       />
+
+      <CopyTasksModal
+        open={copyModalOpen}
+        onClose={() => setCopyModalOpen(false)}
+        onTasksCopied={fetchTasks}
+      />
     </div>
   );
 };
@@ -170,19 +206,21 @@ const ChairPerson = () => {
   }, [navigate]);
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6">Chair Person Events Page</h1>
-      {!selectedEvent ? (
-        <ChairEventsList onSelectEvent={setSelectedEvent} />
-      ) : (
-        <EventView
-          event={selectedEvent}
-          onBack={() => setSelectedEvent(null)}
-          userRole={currentUserRole}
-          user={user}
-        />
-      )}
-    </div>
+    <TaskTemplatesProvider>
+      <div className="p-8">
+        <h1 className="text-2xl font-bold mb-6">Chair Person Events Page</h1>
+        {!selectedEvent ? (
+          <ChairEventsList onSelectEvent={setSelectedEvent} />
+        ) : (
+          <EventView
+            event={selectedEvent}
+            onBack={() => setSelectedEvent(null)}
+            userRole={currentUserRole}
+            user={user}
+          />
+        )}
+      </div>
+    </TaskTemplatesProvider>
   );
 };
 

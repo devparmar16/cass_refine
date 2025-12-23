@@ -74,11 +74,11 @@ const Layout = () => {
             <div className="flex-shrink-0">
               <div className="flex items-center gap-2 sm:gap-3">
                 {/* IEEE CAS Official Logo */}
-                <div className="relative">
+                <div className="top-0 h-18 relative">
                   <img
-                    src="../../logo/IEEE Website Logo Trans.png"
+                    src="/logo/ieee_logo_final.png"
                     alt="IEEE Circuits and Systems Society"
-                    className="max-w-full h-20 w-72 object-contain align-bottom rounded-md"
+                    className="h-19 w-40 align-center rounded-md"
                     onClick={() => handleLogoClick(user.role)}
                   />
                 </div>

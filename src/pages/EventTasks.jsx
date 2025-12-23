@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import AssignTaskModal from '@/pages/chair/AssignTaskModal';
+import CopyTasksModal from '@/components/CopyTasksModal';
+import { TaskTemplatesProvider } from '@/contexts/TaskTemplatesContext';
 import { useAuth } from '@/contexts/AuthContext';
 import TaskCard from '@/components/TaskCard';
 import { hardDeleteTask } from '@/lib/taskActions';
@@ -20,7 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 // Minimal EventTasks page — shows event title, three tabs, and Assign Task modal for Chair
-export default function EventTasks() {
+function EventTasksContent() {
   const { eventId, role: urlRole, section } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -28,6 +30,7 @@ export default function EventTasks() {
   const [tab, setTab] = useState(section || 'mytasks');
   const [refreshKey, setRefreshKey] = useState(0);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showCopyModal, setShowCopyModal] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -248,15 +251,15 @@ export default function EventTasks() {
         onTaskAssigned={handleTaskAssigned}
       />
 
-      <div className="mb-4">
+      <div className="mb-4 flex items-center gap-2">
         <button 
-          className={`px-3 py-1 mr-2 border rounded ${tab === 'mytasks' ? 'bg-blue-500 text-white' : ''}`} 
+          className={`px-3 py-1 border rounded ${tab === 'mytasks' ? 'bg-blue-500 text-white' : ''}`} 
           onClick={() => navigateToTab('mytasks')}
         >
           My Tasks
         </button>
         <button 
-          className={`px-3 py-1 mr-2 border rounded ${tab === 'reviews' ? 'bg-blue-500 text-white' : ''}`} 
+          className={`px-3 py-1 border rounded ${tab === 'reviews' ? 'bg-blue-500 text-white' : ''}`} 
           onClick={() => navigateToTab('reviews')}
         >
           Reviews
@@ -266,6 +269,14 @@ export default function EventTasks() {
           onClick={() => navigateToTab('uploaded')}
         >
           Uploaded
+        </button>
+
+        {/* Copy Tasks button - visible on all three tabs */}
+        <button
+          className="px-3 py-1 ml-auto border rounded bg-orange-600 text-white hover:bg-orange-700"
+          onClick={() => setShowCopyModal(true)}
+        >
+          Copy Tasks
         </button>
 
         {/* Chair-only: Manage All Tasks button */}
@@ -392,7 +403,22 @@ export default function EventTasks() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Copy Tasks Modal */}
+      <CopyTasksModal
+        open={showCopyModal}
+        onClose={() => setShowCopyModal(false)}
+        onTasksCopied={handleTaskAssigned}
+      />
     </div>
   );
 }
 
+// Wrap with TaskTemplatesProvider
+export default function EventTasks() {
+  return (
+    <TaskTemplatesProvider>
+      <EventTasksContent />
+    </TaskTemplatesProvider>
+  );
+}
