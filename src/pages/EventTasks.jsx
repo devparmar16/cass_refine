@@ -9,8 +9,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTasks } from '@/contexts/TasksContext';
 import TaskCard from '@/components/TaskCard';
 import { hardDeleteTask } from '@/lib/taskActions';
-import { Trash2 } from 'lucide-react';
+import { Trash2, ArrowLeft, ClipboardList, CheckSquare, Upload, Copy, Settings, X } from 'lucide-react';
 import { normalizeRole } from '@/lib/roleUtils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -147,26 +149,34 @@ function EventTasksContent() {
     navigate(`/event-tasks/${eventId}/${urlRoleParam}/${tabName}`);
   };
 
-  if (!event) return <div className="p-4">Loading event...</div>;
+  if (!event) return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="animate-pulse flex flex-col items-center gap-3">
+        <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-gray-500">Loading event...</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <Button variant="outline" onClick={() => navigate('/events')}>Back to Events</Button>
-        
-        {/* Chair-only: Assign Task button */}
-        {/* {user?.role === 'Chair Person' && (
-          <Button onClick={() => setShowAssignModal(true)}>
-            Assign Task
-          </Button>
-        )} */}
-      </div>
-
-      <h2 className="text-xl font-bold mb-2">{event.event_name}</h2>
-      
-      {/* Debug info */}
-      <div className="bg-yellow-100 p-2 rounded mb-4 text-sm">
-        <strong>Debug:</strong> User: "{user?.role}" → DB Role: "{currentUserRole}" | Event: {eventId}
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/events')}
+              className="flex items-center gap-2 hover:bg-gray-50"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Back to Events</span>
+            </Button>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{event.event_name}</h1>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Chair-only: Assign Task Modal */}
@@ -176,127 +186,226 @@ function EventTasksContent() {
         onTaskAssigned={handleTaskAssigned}
       />
 
-      <div className="mb-4 flex items-center gap-2">
-        <button 
-          className={`px-3 py-1 border rounded ${tab === 'mytasks' ? 'bg-blue-500 text-white' : ''}`} 
-          onClick={() => navigateToTab('mytasks')}
-        >
-          My Tasks
-        </button>
-        <button 
-          className={`px-3 py-1 border rounded ${tab === 'reviews' ? 'bg-blue-500 text-white' : ''}`} 
-          onClick={() => navigateToTab('reviews')}
-        >
-          Reviews
-        </button>
-        <button 
-          className={`px-3 py-1 border rounded ${tab === 'uploaded' ? 'bg-blue-500 text-white' : ''}`} 
-          onClick={() => navigateToTab('uploaded')}
-        >
-          Uploaded
-        </button>
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Tab Buttons */}
+          <div className="flex flex-1 gap-1 sm:gap-2">
+            <button 
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 ${
+                tab === 'mytasks' 
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-200' 
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`} 
+              onClick={() => navigateToTab('mytasks')}
+            >
+              <ClipboardList className="h-4 w-4" />
+              <span className="hidden sm:inline">My Tasks</span>
+              <span className="sm:hidden">Tasks</span>
+              {tab === 'mytasks' && tasks.length > 0 && (
+                <Badge className="ml-1 bg-white/20 text-white text-xs">{tasks.length}</Badge>
+              )}
+            </button>
+            <button 
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 ${
+                tab === 'reviews' 
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-200' 
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`} 
+              onClick={() => navigateToTab('reviews')}
+            >
+              <CheckSquare className="h-4 w-4" />
+              <span>Reviews</span>
+              {tab === 'reviews' && tasks.length > 0 && (
+                <Badge className="ml-1 bg-white/20 text-white text-xs">{tasks.length}</Badge>
+              )}
+            </button>
+            <button 
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 ${
+                tab === 'uploaded' 
+                  ? 'bg-green-600 text-white shadow-md shadow-green-200' 
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`} 
+              onClick={() => navigateToTab('uploaded')}
+            >
+              <Upload className="h-4 w-4" />
+              <span>Uploaded</span>
+              {tab === 'uploaded' && tasks.length > 0 && (
+                <Badge className="ml-1 bg-white/20 text-white text-xs">{tasks.length}</Badge>
+              )}
+            </button>
+          </div>
 
-        {/* Copy Tasks button - visible on all three tabs */}
-        <button
-          className="px-3 py-1 ml-auto border rounded bg-orange-600 text-white hover:bg-orange-700"
-          onClick={() => setShowCopyModal(true)}
-        >
-          Copy Tasks
-        </button>
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+              onClick={() => setShowCopyModal(true)}
+            >
+              <Copy className="h-4 w-4" />
+              <span className="hidden sm:inline">Copy Tasks</span>
+            </Button>
 
-        {/* Chair-only: Manage All Tasks button */}
-        {userRole === 'Chair Person' && tab === 'mytasks' && (
-          <button 
-            className={`px-3 py-1 ml-4 border rounded ${showAllTasksView ? 'bg-red-500 text-white' : 'bg-gray-700 text-white'}`}
-            onClick={toggleAllTasksView}
-          >
-            {showAllTasksView ? '✕ Close Manage View' : '⚙ Manage All Tasks'}
-          </button>
-        )}
+            {/* Chair-only: Manage All Tasks button */}
+            {userRole === 'Chair Person' && tab === 'mytasks' && (
+              <Button 
+                variant={showAllTasksView ? "destructive" : "secondary"}
+                size="sm"
+                className="flex items-center gap-2"
+                onClick={toggleAllTasksView}
+              >
+                {showAllTasksView ? (
+                  <>
+                    <X className="h-4 w-4" />
+                    <span className="hidden sm:inline">Close</span>
+                  </>
+                ) : (
+                  <>
+                    <Settings className="h-4 w-4" />
+                    <span className="hidden sm:inline">Manage All</span>
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Chair-only: All Tasks Management View */}
       {userRole === 'Chair Person' && showAllTasksView && tab === 'mytasks' && (
-        <div className="mb-6 p-4 border-2 border-red-300 rounded-lg bg-red-50">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-red-700">⚠ Task Management (Chair Only)</h3>
-            <span className="text-sm text-gray-500">
-              Total: {allTasks.length} tasks
-            </span>
-          </div>
-
-          {tasksLoading ? (
-            <p className="text-gray-500">Loading all tasks...</p>
-          ) : allTasks.length === 0 ? (
-            <p className="text-gray-500">No tasks found for this event.</p>
-          ) : (
-            Object.entries(tasksByRole).map(([role, roleTasks]) => (
-              <div key={role} className="mb-4">
-                <h4 className="font-semibold text-gray-700 mb-2 pb-1 border-b">
-                  {roleTasks[0]?.assigned_to_label || role} ({roleTasks.length})
-                </h4>
-                <div className="space-y-2">
-                  {roleTasks.map(task => (
-                    <div 
-                      key={task.id} 
-                      className="flex items-center justify-between p-3 bg-white rounded border shadow-sm"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium">{task.title}</p>
-                        {task.task_name && task.task_name !== task.title && (
-                          <p className="text-sm text-gray-600">{task.task_name}</p>
-                        )}
-                        {task.description && (
-                          <p className="text-xs text-gray-400 mt-1 line-clamp-1">{task.description}</p>
-                        )}
-                        <p className="text-sm text-gray-500 mt-1">
-                          Status: <span className={`font-medium ${
-                            task.status === 'uploaded' ? 'text-green-600' :
-                            task.status === 'in_review' ? 'text-blue-600' :
-                            task.status === 'rejected' ? 'text-red-600' :
-                            'text-gray-600'
-                          }`}>{task.status}</span>
-                          {task.upload_type && <span className="ml-2">| Type: {task.upload_type}</span>}
-                          <span className="ml-2">| ID: {task.id.slice(0, 8)}...</span>
-                        </p>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteTask(task)}
-                        disabled={deletingTaskId === task.id}
-                        className="ml-2"
-                      >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        {deletingTaskId === task.id ? 'Deleting...' : 'Delete'}
-                      </Button>
-                    </div>
-                  ))}
+        <Card className="border-red-200 bg-red-50/50">
+          <CardHeader className="pb-4">
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2 text-red-700">
+                <Settings className="h-5 w-5" />
+                Task Management (Chair Only)
+              </CardTitle>
+              <Badge variant="secondary" className="bg-red-100 text-red-700">
+                {allTasks.length} total tasks
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {tasksLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-pulse flex items-center gap-3">
+                  <div className="h-5 w-5 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-gray-500">Loading all tasks...</span>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ) : allTasks.length === 0 ? (
+              <div className="text-center py-8">
+                <ClipboardList className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-500">No tasks found for this event.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {Object.entries(tasksByRole).map(([role, roleTasks]) => (
+                  <div key={role} className="bg-white rounded-lg border border-red-100 overflow-hidden">
+                    <div className="bg-gray-50 px-4 py-3 border-b border-red-100">
+                      <h4 className="font-semibold text-gray-800 flex items-center justify-between">
+                        <span>{roleTasks[0]?.assigned_to_label || role}</span>
+                        <Badge variant="outline" className="text-gray-600">{roleTasks.length}</Badge>
+                      </h4>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                      {roleTasks.map(task => (
+                        <div 
+                          key={task.id} 
+                          className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{task.title}</p>
+                            {task.task_name && task.task_name !== task.title && (
+                              <p className="text-sm text-gray-600 truncate">{task.task_name}</p>
+                            )}
+                            {task.description && (
+                              <p className="text-xs text-gray-400 mt-1 line-clamp-1">{task.description}</p>
+                            )}
+                            <div className="flex items-center gap-3 mt-2">
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs ${
+                                  task.status === 'uploaded' ? 'border-green-200 text-green-700 bg-green-50' :
+                                  task.status === 'in_review' ? 'border-blue-200 text-blue-700 bg-blue-50' :
+                                  task.status === 'rejected' ? 'border-red-200 text-red-700 bg-red-50' :
+                                  task.status === 'approved' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' :
+                                  'border-gray-200 text-gray-600 bg-gray-50'
+                                }`}
+                              >
+                                {task.status}
+                              </Badge>
+                              {task.upload_type && (
+                                <span className="text-xs text-gray-400">Type: {task.upload_type}</span>
+                              )}
+                              <span className="text-xs text-gray-400 font-mono">ID: {task.id.slice(0, 8)}</span>
+                            </div>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteTask(task)}
+                            disabled={deletingTaskId === task.id}
+                            className="ml-4 shrink-0"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            {deletingTaskId === task.id ? 'Deleting...' : 'Delete'}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Task list */}
-      <div className="mb-4">
-        {tasksLoading ? (
-          <p className="text-gray-500">Loading tasks...</p>
-        ) : tasks.length === 0 ? (
-          <p className="text-gray-500">No tasks in this section.</p>
-        ) : (
-          tasks.map(task => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              userRole={currentUserRole}
-              onRefresh={() => setRefreshKey(k => k + 1)}
-              tab={tab}
-            />
-          ))
-        )}
-      </div>
+      <Card className="border-gray-100">
+        <CardContent className="p-4 sm:p-6">
+          {tasksLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-pulse flex flex-col items-center gap-3">
+                <div className="h-6 w-6 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-gray-500">Loading tasks...</span>
+              </div>
+            </div>
+          ) : tasks.length === 0 ? (
+            <div className="text-center py-12">
+              <div className={`mx-auto h-16 w-16 rounded-full flex items-center justify-center mb-4 ${
+                tab === 'mytasks' ? 'bg-blue-50' : 
+                tab === 'reviews' ? 'bg-purple-50' : 'bg-green-50'
+              }`}>
+                {tab === 'mytasks' ? <ClipboardList className="h-8 w-8 text-blue-400" /> :
+                 tab === 'reviews' ? <CheckSquare className="h-8 w-8 text-purple-400" /> :
+                 <Upload className="h-8 w-8 text-green-400" />}
+              </div>
+              <p className="text-gray-500 font-medium">No tasks in this section</p>
+              <p className="text-gray-400 text-sm mt-1">
+                {tab === 'mytasks' ? 'Tasks assigned to you will appear here' :
+                 tab === 'reviews' ? 'Tasks pending your review will appear here' :
+                 'Tasks you\'ve uploaded will appear here'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {tasks.map(task => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  userRole={currentUserRole}
+                  onRefresh={() => setRefreshKey(k => k + 1)}
+                  tab={tab}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Delete Task Confirmation Dialog */}
       <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>

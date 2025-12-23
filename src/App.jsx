@@ -121,42 +121,43 @@ const queryClient = new QueryClient({
   },
 });
 
-// const ProtectedRoute = ({ children }) => {
-//   const { user, loading, profileCompleted } = useAuth();
-//   const location = useLocation();
+// ProtectedRoute - Redirects to login if user is not authenticated
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
 
-//   if (loading) {
-//     return (
-//       <div className="w-full h-screen flex items-center justify-center">
-//         Loading...
-//       </div>
-//     );
-//   }
+  if (loading) {
+    return <LoadingSpinner />;
+  }
 
-//   // If NOT logged in, allow only the login page
-//   if (!user) {
-//     return location.pathname === "/login"
-//       ? children
-//        to="/login" replace state={{ from }} />;
-//   }
+  if (!user) {
+    // Save the attempted URL for redirecting after login
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
 
-//   // If logged in but profile NOT completed, force redirect to /welcome
-//   if (user && !profileCompleted) {
-//     return location.pathname === "/welcome"
-//       ? children
-//        to="/welcome" replace />;
-//   }
+  return children;
+};
 
-//   // If logged in and profile completed, prevent going back to /login or /welcome
-//   if (user && profileCompleted) {
-//     if (location.pathname === "/login" || location.pathname === "/welcome") {
-//       return <Navigate to="/dashboard" replace />;
-//     }
-//     return {children}</Layout>;
-//   }
+// PublicRoute - Redirects to dashboard if user is already authenticated
+const PublicRoute = ({ children }) => {
+  const { user, loading, profileCompleted } = useAuth();
 
-//   return null;
-// };
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (user) {
+    // If profile not completed, go to welcome
+    if (!profileCompleted) {
+      return <Navigate to="/welcome" replace />;
+    }
+    // Otherwise go to role-based dashboard
+    const dashboardPath = `/${user.role.toLowerCase().replace(/\s+/g, '').replace(/_/g, '')}/dashboard`;
+    return <Navigate to={dashboardPath} replace />;
+  }
+
+  return children;
+};
 
 
 const App = () => (
@@ -167,8 +168,17 @@ const App = () => (
           <TasksProvider>
             <BrowserRouter future={{ v7_startTransition: true }}>
               <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/login" element={<Login />} />
+            {/* Public routes - redirect to dashboard if logged in */}
+            <Route path="/" element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            } />
+            <Route path="/login" element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            } />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/welcome" element={
               <Suspense fallback={<LoadingSpinner />}>
@@ -180,13 +190,16 @@ const App = () => (
                 <ProfileInfo />
               </Suspense>
             } />
-            {/* <Route path="/aboutus" element={<AboutUs />} /> */}
 
             {/* Registration Desk Team Table Entry (removed) */}
             <Route path=":task_id/table" element={<Navigate to="/events" replace />} />
 
             {/* Protected Routes with Navbar */}
-            <Route element={<Layout />}>
+            <Route element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }>
               <Route path="/:role/dashboard" element={
                 <Suspense fallback={<LoadingSpinner />}>
                   <Dashboard />
@@ -229,7 +242,7 @@ const App = () => (
               } />
             </Route>
 
-            {/* <Route path="/" element={<Navigate to="/dashboard" replace />} /> */}
+            {/* Catch all - 404 */}
             <Route path="*" element={
               <Suspense fallback={<LoadingSpinner />}>
                 <NotFound />

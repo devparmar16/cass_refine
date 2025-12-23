@@ -442,28 +442,78 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
   };
 
   /* ---------------- UI ---------------- */
+  
+  // Status badge styling
+  const getStatusBadge = () => {
+    const statusConfig = {
+      'pending': { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200', label: 'Pending' },
+      'assigned': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'Assigned' },
+      'in_progress': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', label: 'In Progress' },
+      'in_review': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', label: 'In Review' },
+      'rejected': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Rejected' },
+      'uploaded': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', label: 'Uploaded' },
+      'completed': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Completed' },
+    };
+    const config = statusConfig[task.status] || { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', label: task.status };
+    return (
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${config.bg} ${config.text} ${config.border}`}>
+        {config.label}
+      </span>
+    );
+  };
+
   return (
-    <div className="border rounded p-4 mb-4 shadow">
-      <h3 className="font-bold text-lg">{task.task_name}</h3>
-      {task.task_desc && (
-        <p className="text-gray-700 mb-2 whitespace-pre-wrap">
-          {renderWithLinks(task.task_desc)}
-        </p>
-      )}
-      <p className="text-sm text-gray-500 mb-2">
-        Status: {task.status}
-        {isManualTask && <span className="ml-2 text-purple-600">(Manual Task)</span>}
-      </p>
-      <p className="text-sm text-gray-500 mb-2">
-        Assigned To: {task.assigned_to} | Current Reviewer: {task.current_reviewer_role || '-'}
-      </p>
+    <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+      {/* Header Section */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-lg text-gray-900 truncate">{task.task_name}</h3>
+          {task.task_desc && (
+            <p className="text-gray-600 mt-1 text-sm line-clamp-2 whitespace-pre-wrap">
+              {renderWithLinks(task.task_desc)}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {getStatusBadge()}
+          {isManualTask && (
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+              Manual
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Meta Information */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mb-4 pb-4 border-b border-gray-100">
+        <span className="flex items-center gap-1">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          Assigned: <span className="font-medium text-gray-700">{task.assigned_to_label || task.assigned_to}</span>
+        </span>
+        {task.current_reviewer_role && (
+          <span className="flex items-center gap-1">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Reviewer: <span className="font-medium text-gray-700">{task.current_reviewer_role}</span>
+          </span>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-wrap gap-2">
 
       {/* Upload button - for assignee, NOT for manual tasks */}
       {!isManualTask && isAssignedToMe && ['assigned', 'pending', 'rejected'].includes(task.status) && (
         <button
-          className="bg-green-600 text-white px-3 py-1 rounded mr-2"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm"
           onClick={openUploadModal}
         >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
           {task.status === 'rejected' ? 'Re-upload' : 'Upload'}
         </button>
       )}
@@ -471,19 +521,25 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
       {/* View Submissions button - NOT for manual tasks */}
       {!isManualTask && (
         <button
-          className="bg-gray-600 text-white px-3 py-1 rounded mr-2"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 transition-colors shadow-sm"
           onClick={() => setShowSubmissionsModal(true)}
         >
-          View Submissions
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Submissions
         </button>
       )}
 
       {/* Download button - show if task has been uploaded/reviewed, NOT for manual tasks */}
       {!isManualTask && ['in_review', 'uploaded', 'rejected'].includes(task.status) && (
         <button
-          className="bg-indigo-600 text-white px-3 py-1 rounded mr-2"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-sm"
           onClick={() => downloadSubmission(task)}
         >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
           Download
         </button>
       )}
@@ -491,10 +547,13 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
       {/* Template button - show if templates exist (storage-driven) */}
       {templateExists && (
         <button
-          className="bg-purple-600 text-white px-3 py-1 rounded mr-2"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-purple-600 text-white hover:bg-purple-700 transition-colors shadow-sm"
           onClick={() => setShowTemplateModal(true)}
         >
-          📄 Template
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Template
         </button>
       )}
 
@@ -504,17 +563,23 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
       {isManualTask && isChair && isAssignedToMe && !['completed'].includes(task.status) && (
         <div className="relative inline-block" ref={sendToMenuRef}>
           <button
-            className="bg-blue-600 text-white px-3 py-1 rounded mr-2"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
             onClick={() => setShowSendToMenu(!showSendToMenu)}
           >
-            Send To ▾
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+            Send To
+            <svg className={`w-3 h-3 transition-transform ${showSendToMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           </button>
           {showSendToMenu && (
-            <div className="absolute left-0 mt-1 w-56 bg-white border rounded shadow-lg z-10">
+            <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1 overflow-hidden">
               {SEND_TO_ROLES.filter(r => r.value !== 'chair').map(role => (
                 <button
                   key={role.value}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 disabled:opacity-50"
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
                   onClick={() => handleSendTo(role.value)}
                   disabled={sendingTo === role.value}
                 >
@@ -529,58 +594,77 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
       {/* Chair: Finalize button (when task is back with chair) */}
       {isManualTask && isChair && isAssignedToMe && ['pending', 'in_progress'].includes(task.status) && (
         <button
-          className="bg-green-700 text-white px-3 py-1 rounded mr-2"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm"
           onClick={handleFinalize}
         >
-          ✓ Finalize
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Finalize
         </button>
       )}
 
       {/* Non-Chair: Send Back to Chair button */}
       {isManualTask && !isChair && isAssignedToMe && ['in_progress', 'assigned'].includes(task.status) && (
         <button
-          className="bg-yellow-600 text-white px-3 py-1 rounded mr-2"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm disabled:opacity-50"
           onClick={handleSendBackToChair}
           disabled={sendingTo === 'chair'}
         >
-          {sendingTo === 'chair' ? 'Sending...' : '← Send Back to Chair'}
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+          </svg>
+          {sendingTo === 'chair' ? 'Sending...' : 'Send Back'}
         </button>
       )}
 
       {/* Remove Upload button - ONLY in /uploaded tab, ONLY for assigned_to role, NOT for manual tasks */}
       {!isManualTask && isInUploadedTab && isAssignedToMe && (
         <button
-          className="bg-orange-500 text-white px-3 py-1 rounded mr-2 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-orange-500 text-white hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-50"
           onClick={handleRemoveUpload}
           disabled={removingUpload}
         >
-          {removingUpload ? 'Removing...' : 'Remove Upload'}
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          {removingUpload ? 'Removing...' : 'Remove'}
         </button>
       )}
 
       {/* Delete Task button - ONLY for Chair, requires confirmation */}
       {isChair && (
         <button
-          className="bg-red-700 text-white px-3 py-1 rounded mr-2"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
           onClick={() => setShowDeleteConfirm(true)}
         >
-          Delete Task
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          Delete
         </button>
       )}
+      </div>
 
       {/* Accept / Reject buttons - for reviewer, NEVER in /uploaded tab, NOT for manual tasks */}
       {!isManualTask && !isInUploadedTab && isReviewer && task.status === 'in_review' && (
-        <div className="flex gap-2 mt-3">
+        <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
           <button
-            className="bg-blue-600 text-white px-3 py-1 rounded"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
             onClick={() => handleAcceptReject('accept')}
           >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
             Accept
           </button>
           <button
-            className="bg-red-600 text-white px-3 py-1 rounded"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
             onClick={() => setShowRejectModal(true)}
           >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
             Reject
           </button>
         </div>
@@ -588,48 +672,60 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
 
       {/* Comment input for reviewer or chair */}
       {canAddComment && (
-        <div className="mt-2">
-          <input
-            type="text"
-            placeholder="Add comment..."
-            value={newComment}
-            onChange={e => setNewComment(e.target.value)}
-            className="border rounded px-2 py-1 mr-2 w-3/4"
-          />
-          <button
-            onClick={handleAddComment}
-            className="bg-gray-700 text-white px-3 py-1 rounded"
-            disabled={loadingComment}
-          >
-            {loadingComment ? 'Adding...' : 'Comment'}
-          </button>
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Add a comment..."
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <button
+              onClick={handleAddComment}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 text-white hover:bg-gray-800 transition-colors shadow-sm disabled:opacity-50"
+              disabled={loadingComment}
+            >
+              {loadingComment ? 'Adding...' : 'Comment'}
+            </button>
+          </div>
         </div>
       )}
 
       {/* Review Flow - ONLY for rejected tasks, assigned_to, in /mytasks */}
       {shouldShowReviewFlow && (
-        <div className="mt-3 border-t pt-2">
+        <div className="mt-4 pt-4 border-t border-gray-100">
           <button
             onClick={() => setShowReviewFlow(!showReviewFlow)}
-            className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1"
+            className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-2 font-medium"
           >
-            <span>{showReviewFlow ? '▼' : '▶'}</span>
-            <span>Review Flow ({flowLogs.length} steps)</span>
+            <svg className={`w-4 h-4 transition-transform ${showReviewFlow ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            Review Flow ({flowLogs.length} steps)
           </button>
           
           {showReviewFlow && (
-            <div className="mt-2 pl-4 border-l-2 border-gray-200 space-y-1">
+            <div className="mt-3 pl-4 border-l-2 border-gray-200 space-y-2">
               {flowLogs.map(log => {
                 // Parse: [__FLOW__][ACCEPT] role or [__FLOW__][REJECT] role
                 const isAccept = log.comment.includes('[ACCEPT]');
                 const role = log.comment.replace('[__FLOW__][ACCEPT] ', '').replace('[__FLOW__][REJECT] ', '');
                 return (
                   <div key={log.id} className="text-sm flex items-center gap-2">
-                    <span className={isAccept ? 'text-green-600' : 'text-red-600'}>
-                      {isAccept ? '✔' : '✖'}
+                    <span className={`flex items-center justify-center w-5 h-5 rounded-full ${isAccept ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                      {isAccept ? (
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
                     </span>
                     <span className="text-gray-700">
-                      {isAccept ? 'Accepted' : 'Rejected'} by {role}
+                      {isAccept ? 'Accepted' : 'Rejected'} by <span className="font-medium">{role}</span>
                     </span>
                   </div>
                 );
@@ -641,9 +737,12 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
 
       {/* Comments - visible to assigned_to, reviewers, and chair (user comments only) */}
       {canSeeComments && userComments.length > 0 && (
-        <div className="mt-3 border-t pt-2">
-          <h4 className="font-semibold text-sm mb-2">
-            Comments ({userComments.length}):
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <h4 className="font-medium text-sm text-gray-900 mb-3 flex items-center gap-2">
+            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            Comments ({userComments.length})
           </h4>
 
           {/* Stacking logic for assigned_to: show 3 by default, expand to show all */}
@@ -659,7 +758,7 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
                 {isAssignedToMe && userComments.length >= 3 && (
                   <button
                     onClick={() => setShowAllComments(!showAllComments)}
-                    className="text-blue-600 text-xs mb-2 hover:underline"
+                    className="text-blue-600 text-xs mb-3 hover:underline font-medium"
                   >
                     {showAllComments 
                       ? 'Hide comments' 
@@ -670,28 +769,30 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
                 {/* Comment list */}
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {displayComments.map(c => (
-                    <div key={c.id} className="bg-gray-50 rounded p-2 text-sm">
+                    <div key={c.id} className="bg-gray-50 rounded-lg p-3 text-sm">
                       <div className="flex justify-between items-center mb-1">
-                        <span className="font-medium text-gray-800">
-                          [{c.author_role}]
+                        <span className="font-medium text-gray-800 text-xs px-2 py-0.5 bg-gray-200 rounded-full">
+                          {c.author_role}
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-400">
                             {new Date(c.created_at).toLocaleString()}
                           </span>
                           {/* Delete button - only visible to comment author, not for flow logs */}
                           {c.author_role === userRole && !c.comment.startsWith('[__FLOW__]') && (
                             <button
                               onClick={() => handleDeleteComment(c.id)}
-                              className="text-red-500 hover:text-red-700 text-xs"
+                              className="text-red-400 hover:text-red-600 transition-colors"
                               title="Delete comment"
                             >
-                              ✕
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
                             </button>
                           )}
                         </div>
                       </div>
-                      <p className="text-gray-700">{c.comment}</p>
+                      <p className="text-gray-700 mt-1">{c.comment}</p>
                     </div>
                   ))}
                 </div>
@@ -703,26 +804,35 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
 
       {/* Reject Modal */}
       {showRejectModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-            <h3 className="font-bold text-lg mb-4">Reject Task</h3>
-            <p className="text-sm text-gray-600 mb-2">Please provide a reason:</p>
-            <textarea
-              value={rejectComment}
-              onChange={e => setRejectComment(e.target.value)}
-              className="w-full border rounded p-2 mb-4"
-              rows={3}
-              placeholder="Rejection reason..."
-            />
-            <div className="flex justify-end gap-2">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-red-50 px-6 py-4 border-b border-red-100">
+              <h3 className="font-semibold text-lg text-red-700 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Reject Task
+              </h3>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-3">Please provide a reason for rejection:</p>
+              <textarea
+                value={rejectComment}
+                onChange={e => setRejectComment(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                rows={4}
+                placeholder="Enter rejection reason..."
+              />
+            </div>
+            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
               <button
-                className="px-4 py-2 bg-gray-300 rounded"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition-colors"
                 onClick={() => { setShowRejectModal(false); setRejectComment(''); }}
               >
                 Cancel
               </button>
               <button
-                className="px-4 py-2 bg-red-600 text-white rounded"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors"
                 onClick={() => {
                   if (rejectComment.trim()) {
                     handleAcceptReject('reject', rejectComment);
@@ -731,7 +841,7 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
                   }
                 }}
               >
-                Reject
+                Reject Task
               </button>
             </div>
           </div>
@@ -740,31 +850,65 @@ const TaskCard = ({ task, userRole, onRefresh, tab }) => {
 
       {/* Delete Task Confirmation Modal - Chair Only */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-            <h3 className="font-bold text-lg mb-4 text-red-700">⚠️ Delete Task</h3>
-            <p className="text-sm text-gray-600 mb-2">
-              This will <strong>permanently delete</strong> this task and ALL associated:
-            </p>
-            <ul className="list-disc list-inside text-sm text-gray-600 mb-4">
-              <li>Files in storage</li>
-              <li>Submissions</li>
-              <li>Comments</li>
-              <li>The task itself</li>
-            </ul>
-            <p className="text-sm font-bold text-red-600 mb-4">
-              This action cannot be undone!
-            </p>
-            <div className="flex justify-end gap-2">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="bg-red-50 px-6 py-4 border-b border-red-100">
+              <h3 className="font-semibold text-lg text-red-700 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Delete Task
+              </h3>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-3">
+                This will <strong className="text-red-600">permanently delete</strong> this task and ALL associated:
+              </p>
+              <ul className="space-y-2 text-sm text-gray-600 mb-4">
+                <li className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Files in storage
+                </li>
+                <li className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Submissions
+                </li>
+                <li className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Comments
+                </li>
+                <li className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  The task itself
+                </li>
+              </ul>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm font-medium text-red-700 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  This action cannot be undone!
+                </p>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
               <button
-                className="px-4 py-2 bg-gray-300 rounded"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50"
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={deletingTask}
               >
                 Cancel
               </button>
               <button
-                className="px-4 py-2 bg-red-700 text-white rounded disabled:opacity-50"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50"
                 onClick={handleDeleteTask}
                 disabled={deletingTask}
               >
